@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     int numBlocks = 32;
 
     // length of grid
-    int N_x = 32;
+    int N_x = 8;
     int N = N_x * N_x;
     int N2 = 0.5 * N;
     int N4 = 0.5 * N2;
@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     cudaMalloc((void**)&d_OU, sizeof(float) *  (N_ALL) );
     CUDA_CALL(cudaMemset (d_OU, 0, sizeof(float) * (N_ALL)));
 
-    float wg = 0.1f;
+    float wg = 0.05f;
 
 
     dim3 threadGrid(N_x, N_x);
@@ -62,7 +62,8 @@ int main(int argc, char** argv)
     int* h_blockTotals = new int[numBlocks];
     int* h_blockTimes = new int[numBlocks];
     int infCount = 8;
-    int infNums [8] = {1024,512,256,128,64,32,16,8};
+    //int infNums [8] = {1024,512,256,128,64,32,16,8};
+    int infNums [8] = {256,128,64,32,16,8,4,2};
     const unsigned int shape[] = {1,N4,infCount};
 
     float* results = new float[N4*infCount];
@@ -77,20 +78,21 @@ int main(int argc, char** argv)
         for (int exnum=0;exnum<N4;exnum++)
         {
             cout<<exnum<<endl;
-            for (int infnum=0;infnum<infCount;infnum++)
+            for (int infnum=2;infnum<infCount;infnum++)
             {
                 float sw = 1.0f - (float)net*0.1;;
                 CUDA_CALL(cudaMemset (d_states, 0, sizeof(int) * (N_ALL)));
                 CUDA_CALL(cudaMemset (d_blockTotals, 0, sizeof(int) * (numBlocks)));
 
                 setInformation(h_wg, wg, 2*exnum, infNums[infnum], N, numBlocks);
+
                 CUDA_CALL(cudaMemcpy(d_wg, h_wg, (N_ALL) * sizeof(float), cudaMemcpyHostToDevice));
 
 
                 for (int b=0;b<numBlocks;b++)
                     h_blockTimes[b] = -1;
 
-                for (int t=0;t<100000;t++)
+                for (int t=0;t<1000000;t++)
                 {
                     advanceTimestep(threadGrid, numBlocks, devRands, d_OU, d_wg, d_states, N_x, sw);
                     if (t%100 == 0 ) 
@@ -170,6 +172,9 @@ void setInformation(float* wg, float base, int ex_num, int split_num, int N, int
     {
         wginc = 99.0f;
     }
+
+    float totalP = 64.0f * ex_num / (float)N;
+    wginc = totalP/(float)split_num;
 
     // first apply the baseline wg
     for (int b=0;b<numBlocks;b++)
