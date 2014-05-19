@@ -19,6 +19,7 @@
 #include <algorithm>
 #include "mkl.h"
 #include "cnpy.h"
+#include <time.h>
 
 using namespace std;
 
@@ -26,7 +27,7 @@ int main(int argc, char** argv)
 {
 
     // number of reps
-    int numBlocks = 32;
+    int numBlocks = 128;
 
     // length of grid
     int N_x = 8;
@@ -44,7 +45,8 @@ int main(int argc, char** argv)
     dim3 threadGrid(N_x, N_x);
     curandState *devRands;
     CUDA_CALL(cudaMalloc((void **)&devRands, N_ALL * sizeof(curandState)));
-    initRands(threadGrid, numBlocks, devRands);
+    srand (time(NULL));
+    initRands(threadGrid, numBlocks, devRands, rand());
 
 
     float* h_OU = new float [N_ALL];
@@ -61,30 +63,33 @@ int main(int argc, char** argv)
 
     int* h_blockTotals = new int[numBlocks];
     int* h_blockTimes = new int[numBlocks];
-    int infCount = 8;
+    int infCount = N;
     //int infNums [8] = {1024,512,256,128,64,32,16,8};
-    int infNums [8] = {256,128,64,32,16,8,4,2};
-    const unsigned int shape[] = {1,N4,infCount};
+    int infNums[8] = {256,128,64,32,16,8,4,2};
+    const unsigned int shape[] = {1,N,infCount};
 
-    float* results = new float[N4*infCount];
-    for (int i=0;i<N4*infCount;i++)
+    float* results = new float[N*infCount];
+    for (int i=0;i<N*infCount;i++)
        results[i]=0.0f;
 
 
-    for (int net=0;net<10;net++)
+ //   for (int net=0;net<10;net++)
+        int net = 9;
+
     {
         char fileName[7];
-        sprintf(fileName, "sq%d.npy", net);
-        for (int exnum=0;exnum<N4;exnum++)
+        sprintf(fileName, "aplsq%d.npy", net);
+        for (int exnum=10;exnum<N;exnum++)
         {
-            cout<<exnum<<endl;
-            for (int infnum=2;infnum<infCount;infnum++)
+ //           for (int infnum=0;infnum<infCount;infnum++)
             {
+        int infnum = 14;
+                cout<<infnum<<endl;
                 float sw = 1.0f - (float)net*0.1;;
                 CUDA_CALL(cudaMemset (d_states, 0, sizeof(int) * (N_ALL)));
                 CUDA_CALL(cudaMemset (d_blockTotals, 0, sizeof(int) * (numBlocks)));
 
-                setInformation(h_wg, wg, 2*exnum, infNums[infnum], N, numBlocks);
+                setInformation(h_wg, wg, exnum, infnum + 1, N, numBlocks);
 
                 CUDA_CALL(cudaMemcpy(d_wg, h_wg, (N_ALL) * sizeof(float), cudaMemcpyHostToDevice));
 
@@ -95,7 +100,7 @@ int main(int argc, char** argv)
                 for (int t=0;t<1000000;t++)
                 {
                     advanceTimestep(threadGrid, numBlocks, devRands, d_OU, d_wg, d_states, N_x, sw);
-                    if (t%100 == 0 ) 
+ //                   if (t%100 == 0 ) 
                     {
                         countStates(N, numBlocks, d_states, d_blockTotals, N_ALL);
 

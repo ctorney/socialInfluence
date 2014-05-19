@@ -12,13 +12,13 @@ __device__ int getIndex(int t_x, int t_y)
 }
         
 
-__global__ void d_initRands(curandState *state)
+__global__ void d_initRands(curandState *state, int seed)
 {
     int id = getIndex(threadIdx.x, threadIdx.y);
 
     /* Each thread gets same seed, a different sequence 
      *        number, no offset */
-    curand_init(1234, id, 0, &state[id]);
+    curand_init(seed, id, 0, &state[id]);
 }
 
 __global__ void d_generateOU(curandState *state, float* ou_process, float* wg)
@@ -202,9 +202,9 @@ __global__ void block_sum(const int *input, int *per_block_results, const size_t
     }
 }
 
-void initRands(dim3 threadGrid, int numBlocks, curandState *state) 
+void initRands(dim3 threadGrid, int numBlocks, curandState *state, int seed) 
 {
-    d_initRands<<< numBlocks, threadGrid >>>(state);
+    d_initRands<<< numBlocks, threadGrid >>>(state, seed);
     if (cudaSuccess != cudaGetLastError()) printf( "cuda error!\n" );
 }
 void advanceTimestep(dim3 threadGrid, int numBlocks, curandState *rands, float* OU, float* wg, int* states, int N_x, float sw)
