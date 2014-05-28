@@ -25,9 +25,10 @@ using namespace std;
 
 int main(int argc, char** argv) 
 {
+    int inNetwork=atoi(argv[1]);
 
     // number of reps
-    int numBlocks = 128;
+    int numBlocks = 32;
 
     // length of grid
     int N_x = 8;
@@ -39,7 +40,7 @@ int main(int argc, char** argv)
     cudaMalloc((void**)&d_OU, sizeof(float) *  (N_ALL) );
     CUDA_CALL(cudaMemset (d_OU, 0, sizeof(float) * (N_ALL)));
 
-    float wg = 0.05f;
+    float wg = 0.1f;
 
 
     dim3 threadGrid(N_x, N_x);
@@ -74,18 +75,18 @@ int main(int argc, char** argv)
 
 
  //   for (int net=0;net<10;net++)
-        int net = 9;
+        int net = inNetwork;
 
     {
         char fileName[7];
-        sprintf(fileName, "aplsq%d.npy", net);
-        for (int exnum=10;exnum<N;exnum++)
+        sprintf(fileName, "cost2q%d.npy", net);
+        for (int exnum=N-1;exnum>=0;exnum--)
         {
  //           for (int infnum=0;infnum<infCount;infnum++)
             {
-        int infnum = 14;
-                cout<<infnum<<endl;
-                float sw = 1.0f - (float)net*0.1;;
+                int infnum = 14;
+                cout<<exnum<<endl;
+                float sw = 1.0f - (float)net*0.2;;
                 CUDA_CALL(cudaMemset (d_states, 0, sizeof(int) * (N_ALL)));
                 CUDA_CALL(cudaMemset (d_blockTotals, 0, sizeof(int) * (numBlocks)));
 
@@ -96,11 +97,13 @@ int main(int argc, char** argv)
 
                 for (int b=0;b<numBlocks;b++)
                     h_blockTimes[b] = -1;
+                int maxTime = 10000000;
+                int checkTime = 1;
 
-                for (int t=0;t<1000000;t++)
+                for (int t=0;t<maxTime;t++)
                 {
                     advanceTimestep(threadGrid, numBlocks, devRands, d_OU, d_wg, d_states, N_x, sw);
- //                   if (t%100 == 0 ) 
+                    if (t%checkTime == 0 ) 
                     {
                         countStates(N, numBlocks, d_states, d_blockTotals, N_ALL);
 
@@ -128,7 +131,14 @@ int main(int argc, char** argv)
                         avTime += (float)h_blockTimes[b];
                         count++;
                     }
-                results[exnum * infCount + infnum] = avTime/(float)count;
+                if (count>0)
+                    results[exnum * infCount + infnum] = avTime/(float)count;
+                else
+                    results[exnum * infCount + infnum] = maxTime;
+                if (avTime/(float)count > 100*checkTime)
+                    checkTime = checkTime * 10;
+                if (checkTime > 10000)
+                    checkTime = 10000;
             }
         }
         cnpy::npy_save(fileName,results,shape,3,"w");
@@ -178,7 +188,7 @@ void setInformation(float* wg, float base, int ex_num, int split_num, int N, int
         wginc = 99.0f;
     }
 
-    float totalP = 64.0f * ex_num / (float)N;
+    float totalP = 16.0f * ex_num / (float)N;
     wginc = totalP/(float)split_num;
 
     // first apply the baseline wg
