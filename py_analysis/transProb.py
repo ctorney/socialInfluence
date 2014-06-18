@@ -11,6 +11,7 @@ import matplotlib as mpl
 K = 8        
 wg = 0.2875
 ws = 0.65
+alpha = 0.4
 
 def psw( j ):
     gc = np.log(ws/(1-ws))*(K-2*j)/(4*wg)
@@ -19,29 +20,54 @@ def psw( j ):
 
 # Function definition is here
 def tup( x ):
-    return (1-x) * sum(sp.binomial(K,j) * x**j * (1-x)**(K-j) * psw(j) for j in xrange(0,K+1))
+    xx = (1.0-alpha)*(x)
+    return (1-x) * sum(sp.binomial(K,j) * xx**j * (1-xx)**(K-j) * psw(j) for j in xrange(0,K+1))
 
 def tdown( x ):
-    return (x) * (1 -  sum(sp.binomial(K,j) * x**j * (1-x)**(K-j) * psw(j) for j in xrange(0,K+1)))
+    xx = 1.0-(1.0-alpha)*(1.0-x)
+    return (x) * (1 -  sum(sp.binomial(K,j) * xx**j * (1-xx)**(K-j) * psw(j) for j in xrange(0,K+1)))
 
 
-sampleP = np.load('potential5-50.npy')
-xGrid=np.arange(64)/64.0
-yGrid = np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
-plt.plot(xGrid,yGrid)
+sampleP = np.load('potential10.npy')
+xGrid=np.arange(65)/64.0
+yGrid = sampleP[0,:]#np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
+plt.plot(xGrid,yGrid,label='sim up')
 
-yGrid = np.concatenate((sampleP[0,1:64:2],sampleP[1,0:64:2]))
-plt.plot(xGrid,yGrid)
-plt.axis([0, 0.2, 0, 0.100])
+#yGrid = np.concatenate((sampleP[0,1:64:2],sampleP[1,0:64:2]))
+yGrid = sampleP[1,:]#np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
+plt.plot(xGrid,yGrid,label='sim down')
+plt.axis([0, 1, 0, 0.4])
 
-thGridup=np.zeros(64)
-thGriddown=np.zeros(64)
+sampleP = np.load('potential00.npy')
+xGrid=np.arange(65)/64.0
+yGrid = sampleP[0,:]#np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
+plt.plot(xGrid,yGrid,label='sim up')
 
-for x in range(0,64):
+#yGrid = np.concatenate((sampleP[0,1:64:2],sampleP[1,0:64:2]))
+yGrid = sampleP[1,:]#np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
+plt.plot(xGrid,yGrid,label='sim down')
+plt.axis([0, 1, 0, 0.4])
+
+
+thGridup=np.zeros(65)
+thGriddown=np.zeros(65)
+
+for x in range(0,65):
     thGridup[x] = tup(x/64.0)
     thGriddown[x] = tdown(x/64.0)
-plt.plot(xGrid,thGridup)
-plt.plot(xGrid,thGriddown)
+#plt.plot(xGrid,thGridup,label='theory up')
+#plt.plot(xGrid,thGriddown,label='theory down')
+legend()
+plt.figure()
 
+pot=np.log(np.divide(sampleP[1,:],sampleP[0,:]))
+pot=np.cumsum(pot[2:64])
+plt.plot(xGrid[2:64],pot)
+potmatch = pot[32]
+pot=np.log(np.divide(thGriddown,thGridup))
+pot=np.cumsum(pot[2:64])
+potdiff = potmatch-pot[32]
+#pot = pot + potdiff
+plt.plot(xGrid[2:64],pot)
 
 
