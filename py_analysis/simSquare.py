@@ -15,8 +15,8 @@ from pylab import *
 
 
 K = 8        
-wg = 0.2875
-ws = 0.65
+wg = 0.5
+ws = 0.75
 
 
 def psw( j ):
@@ -39,7 +39,7 @@ NA = Nx * Nx
 NT=4000  
 
 
-alpha = 0.9
+alpha = 1
 
 counts = np.zeros(NA+1)
 ups = np.zeros(NA+1)
@@ -55,7 +55,7 @@ c = sqrt((1.0-a*a)/(2.0*wg))
 
 
 
-for av in range(500):
+for av in range(50):
         
     G=np.ones((Nx,Nx))
     u=np.zeros((Nx,Nx))
@@ -135,16 +135,18 @@ ups = np.divide(ups,counts)
 downs = np.divide(downs,counts)
 
 xGrid=np.arange(65)/64.0
-#plt.plot(xGrid,ups)
+plt.plot(xGrid,ups,label='ups')
 
 
-#plt.plot(xGrid,downs)
-#plt.axis([0, 0.5, 0, 0.500])
+plt.plot(xGrid,downs,label='downs')
+plt.axis([0, 0.5, 0, 0.500])
+legend()
+figure()
 pot=np.log(np.divide(downs,ups))
 pot=np.cumsum(pot[2:64])
 
 
-plt.plot(xGrid[1:64],pot)
+plt.plot(xGrid[2:64],pot)
 
 thGridup=np.zeros(65)
 thGriddown=np.zeros(65)
@@ -157,4 +159,4 @@ for x in range(0,65):
 
 pot=np.log(np.divide(thGriddown,thGridup))
 pot=np.cumsum(pot[2:64])
-plt.plot(xGrid[1:64],pot)
+plt.plot(xGrid[2:64],pot)
