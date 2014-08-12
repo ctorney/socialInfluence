@@ -6,8 +6,8 @@
 __device__ int getIndex(int t_x, int t_y)
 {
     // calculate full index from a grid position 
-    int indx = __mul24(t_y,blockDim.x) + t_x;
-    return __mul24(blockDim.y, __mul24(blockIdx.x, blockDim.x)) + indx;
+    int indx = __mul24(blockIdx.x,blockDim.x) + t_x;
+    return __mul24(t_y, __mul24(gridDim.x, blockDim.x)) + indx;
 
 }
         
@@ -25,7 +25,6 @@ __global__ void d_generateOU(curandState *state, float* ou_process, float* wg)
 {
 
     int id = getIndex(threadIdx.x, threadIdx.y);
- //   printf("%d %d %d %d %d %d\n",id, threadIdx.x, threadIdx.y, blockIdx.x, blockDim.x, gridDim.x);
 
     float last = ou_process[id];
     float nm = curand_normal(&state[id]);

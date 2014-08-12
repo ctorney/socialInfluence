@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     int inNetwork=atoi(argv[1]);
 
     // number of reps
-    int numBlocks = 256;
+    int numBlocks = 1;
 
     // length of grid
     int N_x = 8;
@@ -56,37 +56,8 @@ int main(int argc, char** argv)
     float* h_wg = new float [N_ALL];
     int* d_states;
     CUDA_CALL(cudaMalloc((void**)&d_states, sizeof(int) * N_ALL));
-    int* d_states2;
-    CUDA_CALL(cudaMalloc((void**)&d_states2, sizeof(int) * N_ALL));
 
     int* h_states = new int[N_ALL];
-    float* d_up;
-    CUDA_CALL(cudaMalloc((void**)&d_up, sizeof(float) *  (N + 1) ));
-
-    float* h_up = new float [N+1];
-
-    float* d_down;
-    CUDA_CALL(cudaMalloc((void**)&d_down, sizeof(float) *  (N + 1) ));
-
-    float* h_down = new float [N+1];
-
-    int* d_upcount;
-    CUDA_CALL(cudaMalloc((void**)&d_upcount, sizeof(int) *  (N + 1) ));
-
-    int* h_upcount = new int [N+1];
-
-    int* d_downcount;
-    CUDA_CALL(cudaMalloc((void**)&d_downcount, sizeof(int) *  (N + 1) ));
-
-    int* h_downcount = new int [N+1];
-
-    CUDA_CALL(cudaMemset (d_up, 0, sizeof(float) * (N + 1)));
-    CUDA_CALL(cudaMemset (d_down, 0, sizeof(float) * (N + 1)));
-    CUDA_CALL(cudaMemset (d_upcount, 0, sizeof(int) * (N + 1)));
-    CUDA_CALL(cudaMemset (d_downcount, 0, sizeof(int) * (N + 1)));
-
-
-
 
     int* d_blockTotals;
     CUDA_CALL(cudaMalloc((void**)&d_blockTotals, sizeof(int) * numBlocks));
@@ -96,80 +67,77 @@ int main(int argc, char** argv)
     int infCount = N;
     //int infNums [8] = {1024,512,256,128,64,32,16,8};
     int infNums[8] = {256,128,64,32,16,8,4,2};
-    const unsigned int shape[] = {N+1,2};
+    int maxTime = 1000000;
+    const unsigned int shape[] = {1,maxTime,1};
 
-    float* results = new float[N*infCount];
-    for (int i=0;i<N*2+2;i++)
+    float* results = new float[maxTime];
+    for (int i=0;i<maxTime;i++)
        results[i]=0.0f;
 
 
  //   for (int net=0;net<10;net++)
-        int net = inNetwork;
+    int net = 0;
 
     {
-        char fileName[20];
+        char fileName[7];
+        sprintf(fileName, "time_series%d.npy", net);
 //        for (int exnum=N-1;exnum>=0;exnum--)
-        int exnum =50;
+            int exnum = 30;//
         {
-            sprintf(fileName, "potential%d-%d.npy", net,exnum);
+ //   float totalP = 16.0f * ex_num / (float)N;
+ //   wginc = totalP/(float)split_num;
  //           for (int infnum=0;infnum<infCount;infnum++)
             {
                 int infnum = 14;
-                cout<<exnum<<endl;
-                float sw = 1.0f - (float)net*0.2;;
+                float sw = 1.0f;// - (float)net*0.2;;
                 CUDA_CALL(cudaMemset (d_states, 0, sizeof(int) * (N_ALL)));
                 CUDA_CALL(cudaMemset (d_blockTotals, 0, sizeof(int) * (numBlocks)));
 
-                //setInformation(h_wg, wg, exnum, infnum + 1, N, numBlocks);
-                setInformation(h_wg, wg, exnum, N, N, numBlocks);
+                setInformation(h_wg, wg, exnum, infnum + 1, N, numBlocks);
 
                 CUDA_CALL(cudaMemcpy(d_wg, h_wg, (N_ALL) * sizeof(float), cudaMemcpyHostToDevice));
 
 
                 for (int b=0;b<numBlocks;b++)
                     h_blockTimes[b] = -1;
-                int maxTime = 100000;
-                int checkTime = 100;
+                int checkTime = 1;
 
                 for (int t=0;t<maxTime;t++)
                 {
                     advanceTimestep(threadGrid, numBlocks, devRands, d_OU, d_wg, d_states, N_x, sw);
-                    recordData(threadGrid, numBlocks, d_states, d_states2, N_x, d_up, d_down, d_upcount, d_downcount, t);
                     if (t%checkTime == 0 ) 
                     {
                         countStates(N, numBlocks, d_states, d_blockTotals, N_ALL);
 
                         CUDA_CALL(cudaMemcpy(h_blockTotals, d_blockTotals, (numBlocks) * sizeof(int), cudaMemcpyDeviceToHost));
+                        results[t] = h_blockTotals[0]/(float)N;
+                        cout<<results[t]<<endl;
                         bool allDone = true;
                         for (int b=0;b<numBlocks;b++)
-                        {
-                            if (h_blockTotals[b]>N2)
+                            if (h_blockTotals[b]==N)
                             {
                                 if (h_blockTimes[b]<0)
                                     h_blockTimes[b]=t;
                             }
                             else
                                 allDone = false;
-                        }
                         if (allDone)
                             break;
                     }
 
                 }
-                CUDA_CALL(cudaMemcpy(h_up, d_up, (N + 1) * sizeof(float), cudaMemcpyDeviceToHost));
-                CUDA_CALL(cudaMemcpy(h_down, d_down, (N + 1) * sizeof(float), cudaMemcpyDeviceToHost));
-                CUDA_CALL(cudaMemcpy(h_upcount, d_upcount, (N + 1) * sizeof(int), cudaMemcpyDeviceToHost));
 
-                for (int i=0;i<N+1;i++)
-                {
-                    results[i*2]=h_up[i];
-                    results[i*2+1]=h_down[i];
-                    cout<<h_up[i]<<":"<<h_down[i]<<":"<<h_upcount[i]<<endl;
-                }
-
+                float avTime = 0.0f;
+                int count=0;
+                for (int b=0;b<numBlocks;b++)
+                    if (h_blockTimes[b]>0)
+                    {
+                        avTime += (float)h_blockTimes[b];
+                        count++;
+                    }
             }
         }
-        cnpy::npy_save(fileName,results,shape,2,"w");
+        cnpy::npy_save(fileName,results,shape,3,"w");
     }
     /*
        CUDA_CALL(cudaMemcpy(h_states, d_states, (N_ALL) * sizeof(float), cudaMemcpyDeviceToHost));

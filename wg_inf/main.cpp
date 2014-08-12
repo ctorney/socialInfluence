@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     int inNetwork=atoi(argv[1]);
 
     // number of reps
-    int numBlocks = 32;
+    int numBlocks = 128;
 
     // length of grid
     int N_x = 8;
@@ -74,75 +74,77 @@ int main(int argc, char** argv)
        results[i]=0.0f;
 
 
- //   for (int net=0;net<10;net++)
-        int net = inNetwork;
+    //   for (int net=0;net<10;net++)
+    int net = inNetwork;
 
+
+    char fileName[18];
+    sprintf(fileName, "cost2q%d.npy", net);
+    for (int exnum=N-1;exnum>=0;exnum--)
     {
-        char fileName[7];
-        sprintf(fileName, "cost2q%d.npy", net);
-        for (int exnum=N-1;exnum>=0;exnum--)
+        //           for (int infnum=0;infnum<infCount;infnum++)
+
+        int infnum = 14;
+        cout<<exnum<<endl;
+        float sw = 1.0f - (float)net*0.2;;
+        CUDA_CALL(cudaMemset (d_states, 0, sizeof(int) * (N_ALL)));
+        CUDA_CALL(cudaMemset (d_blockTotals, 0, sizeof(int) * (numBlocks)));
+
+        //setInformation(h_wg, wg, exnum, infnum + 1, N, numBlocks);
+        setInformation(h_wg, wg, exnum, N, N, numBlocks);
+
+        CUDA_CALL(cudaMemcpy(d_wg, h_wg, (N_ALL) * sizeof(float), cudaMemcpyHostToDevice));
+
+
+        for (int b=0;b<numBlocks;b++)
+            h_blockTimes[b] = -1;
+        int maxTime = 100000000;
+        int checkTime = 1;
+
+        for (int t=0;t<maxTime;t++)
         {
- //           for (int infnum=0;infnum<infCount;infnum++)
+            advanceTimestep(threadGrid, numBlocks, devRands, d_OU, d_wg, d_states, N_x, sw);
+            if (t%checkTime == 0 ) 
             {
-                int infnum = 14;
-                cout<<exnum<<endl;
-                float sw = 1.0f - (float)net*0.2;;
-                CUDA_CALL(cudaMemset (d_states, 0, sizeof(int) * (N_ALL)));
-                CUDA_CALL(cudaMemset (d_blockTotals, 0, sizeof(int) * (numBlocks)));
+                countStates(N, numBlocks, d_states, d_blockTotals, N_ALL);
 
-                setInformation(h_wg, wg, exnum, infnum + 1, N, numBlocks);
-
-                CUDA_CALL(cudaMemcpy(d_wg, h_wg, (N_ALL) * sizeof(float), cudaMemcpyHostToDevice));
-
-
+                CUDA_CALL(cudaMemcpy(h_blockTotals, d_blockTotals, (numBlocks) * sizeof(int), cudaMemcpyDeviceToHost));
+                bool allDone = true;
                 for (int b=0;b<numBlocks;b++)
-                    h_blockTimes[b] = -1;
-                int maxTime = 10000000;
-                int checkTime = 1;
-
-                for (int t=0;t<maxTime;t++)
-                {
-                    advanceTimestep(threadGrid, numBlocks, devRands, d_OU, d_wg, d_states, N_x, sw);
-                    if (t%checkTime == 0 ) 
+                    if (h_blockTotals[b]>N2)
                     {
-                        countStates(N, numBlocks, d_states, d_blockTotals, N_ALL);
-
-                        CUDA_CALL(cudaMemcpy(h_blockTotals, d_blockTotals, (numBlocks) * sizeof(int), cudaMemcpyDeviceToHost));
-                        bool allDone = true;
-                        for (int b=0;b<numBlocks;b++)
-                            if (h_blockTotals[b]>N2)
-                            {
-                                if (h_blockTimes[b]<0)
-                                    h_blockTimes[b]=t;
-                            }
-                            else
-                                allDone = false;
-                        if (allDone)
-                            break;
+                        if (h_blockTimes[b]<0)
+                            h_blockTimes[b]=t;
                     }
-
-                }
-
-                float avTime = 0.0f;
-                int count=0;
-                for (int b=0;b<numBlocks;b++)
-                    if (h_blockTimes[b]>0)
-                    {
-                        avTime += (float)h_blockTimes[b];
-                        count++;
-                    }
-                if (count>0)
-                    results[exnum * infCount + infnum] = avTime/(float)count;
-                else
-                    results[exnum * infCount + infnum] = maxTime;
-                if (avTime/(float)count > 100*checkTime)
-                    checkTime = checkTime * 10;
-                if (checkTime > 10000)
-                    checkTime = 10000;
+                    else
+                        allDone = false;
+                if (allDone)
+                    break;
             }
+
         }
+
+        float avTime = 0.0f;
+        int count=0;
+        for (int b=0;b<numBlocks;b++)
+            if (h_blockTimes[b]>0)
+            {
+                avTime += (float)h_blockTimes[b];
+                count++;
+            }
+        if (count>0)
+            results[exnum * infCount + infnum] = avTime/(float)count;
+        else
+            results[exnum * infCount + infnum] = maxTime;
+        if (avTime/(float)count > 100*checkTime)
+            checkTime = checkTime * 10;
+        if (checkTime > 10000)
+            checkTime = 10000;
+
         cnpy::npy_save(fileName,results,shape,3,"w");
     }
+
+
     /*
        CUDA_CALL(cudaMemcpy(h_states, d_states, (N_ALL) * sizeof(float), cudaMemcpyDeviceToHost));
        for (int b=0;b<numBlocks;b++)
@@ -215,7 +217,7 @@ void setInformation(float* wg, float base, int ex_num, int split_num, int N, int
 
 
     }
- //   cout<<ex_num<<":"<<split_num<<":"<<wginc<<endl;
+    //   cout<<ex_num<<":"<<split_num<<":"<<wginc<<endl;
     delete [] randN;
     delete [] listN;
     delete [] in;
