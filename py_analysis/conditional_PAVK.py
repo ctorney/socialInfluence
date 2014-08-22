@@ -9,7 +9,7 @@ import math
 import matplotlib as mpl
 
 K = 80       
-wg = 0.35
+wg = 0.25
 ws = 0.51547
 alpha = 0.0
 NA = 64.0
@@ -26,19 +26,15 @@ def tup( x,xx ):
     xxx=x
     if x<1:
         xxx = (1.0-xx)*(x)/(1.0-x)
-    alpha1 = 0.5*(1.0-exp(-x/0.1))
-    rho = 0.4
-    xc = 0.15
-    kk = 50
-    alpha1 = rho/(1.0+exp(-kk*(x-xc)))
+    
     #xxx = (1.0-alpha1)*(x)
     
-    return (1-x) * sum(sp.binomial(K,j) * xxx**j * (1-xxx)**(K-j) * psw(j) for j in xrange(0,K+1))
+    return (1-x) * psw(K*xxx)
 
 def tdown( x,xx ):
     #alpha1 = alpha*(1.0-exp(-x/0.1))        
     #xx = 1.0-(1.0-alpha1)*(1.0-x)
-    return (x) * (1 -  sum(sp.binomial(K,j) * xx**j * (1-xx)**(K-j) * psw(j) for j in xrange(0,K+1)))
+    return (x) * (1 -  psw(K*xx))# sum(sp.binomial(K,j) * xx**j * (1-xx)**(K-j) * psw(j) for j in xrange(0,K+1)))
 
 def pswB1( x ):
     return  (sum(sp.binomial(K-1,j) * x**j * (1-x)**(K-1-j) * psw(j+1) for j in xrange(0,K)))
@@ -78,14 +74,14 @@ plt.plot(Xs,thGridup,marker='o',label='theory up')
 plt.plot(Xs,thGriddown,marker='o',label='theory down')
 
 
-sampleP = np.load('../potential_v2/build/potential3-100.npy')
+sampleP = np.load('../potential_v2/build/potential2-0.npy')
 xGrid=np.arange(65)/64.0
 yGrid = sampleP[:,0]#np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
-plt.plot(xGrid,yGrid,label='sim up')
+#plt.plot(xGrid,yGrid,marker='o',label='sim up')
 
 #yGrid = np.concatenate((sampleP[0,1:64:2],sampleP[1,0:64:2]))
 yGrid = sampleP[:,1]#np.concatenate((sampleP[0,0:64:2],sampleP[1,1:64:2]))
-plt.plot(xGrid,yGrid,label='sim down')
+#plt.plot(xGrid,yGrid,label='sim down')
 
 #plt.plot(Xs,PAB)
 #plt.plot(Xs,Xs)
