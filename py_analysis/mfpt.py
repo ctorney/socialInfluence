@@ -31,7 +31,7 @@ def tdown( x ):
 
 
 
-numA = 60
+numA = 20
 alphas = np.zeros(numA)
 atimes = np.zeros(numA)
 for acount in range(0,numA):
