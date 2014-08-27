@@ -15,8 +15,8 @@ from pylab import *
 
 
 K = 8        
-wg = 0.5
-ws = 0.75
+wg = 0.875
+ws = 0.65
 
 
 def psw( j ):
@@ -35,7 +35,7 @@ def tdown( x ):
 Nx = 8
 NA = Nx * Nx
 
-NT=15000 
+NT=5000
 
 
 alpha = 1
@@ -43,15 +43,16 @@ alpha = 1
 
 
 
+wgs = 0.01 + wg*1.0*(rand(Nx, Nx)<14.0/64.0)
 
-a = exp(-wg)
+a = exp(-wgs)
 b = (1-a)
-c = sqrt((1.0-a*a)/(2.0*wg))
+c = sqrt((1.0-a*a)/(2.0*wgs))
 
 
 
 for acount in range(10,11):
-    alpha = 0.1*float(acount)
+    alpha = 0.0#0.1*float(acount)
     
     counts = np.zeros(NA+1)
     ups = np.zeros(NA+1)
@@ -119,7 +120,7 @@ for acount in range(10,11):
             deltan = deltan - K
         
         
-            pup = exp(-4.0*wg*G[ix,iy])
+            pup = exp(-4.0*wgs[ix,iy]*G[ix,iy])
             pall = pup*(((1.0 - ws)/ws)**deltan)
             
             if (pall<1.0):
@@ -148,9 +149,12 @@ for acount in range(10,11):
     cups = np.divide(cups,ccounts)
     cdowns = np.divide(cdowns,dcounts)
     conds = np.divide(conds,counts)
+    xGrid=np.arange(65)/64.0
+    plt.plot(xGrid,ups,marker='o',label='sim up')
+    plt.plot(xGrid,downs,marker='o',label='sim up')
     
     outdata = np.vstack((ups,downs))
     #    for r in ups: print r
     #    for r in downs: print r
-    outfile = "potential1" + '{0:02d}'.format(int(acount)) +".npy"
+    #outfile = "potential1" + '{0:02d}'.format(int(acount)) +".npy"
     #np.save(outfile, outdata)  
